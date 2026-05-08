@@ -1,0 +1,136 @@
+---
+title: "Discrete measurements"
+author: "Jill Ashey"
+date: "2026-05-08"
+output: html_document
+---
+
+This script plots data from discrete measurements (temperature, pH, salinity, light). 
+
+Set up 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+Load packages
+```{r}
+library(tidyverse)
+library(stringr)
+library(readxl)
+library(purrr)
+library(lubridate)
+library(ggplot2)
+library(broom)
+library(cowplot)
+library(ggh4x)
+```
+
+Read in daily measurement csv 
+```{r}
+daily <- read.csv("../data/environmental/Discrete_Measurements.csv")
+daily$Date <- as.Date(daily$Date, format="%m/%d/%y")
+```
+
+Change data to long format 
+```{r}
+daily_long <- daily %>% 
+  pivot_longer(cols=Temperature_C:Light_PAR,
+  names_to = "metric",
+  values_to = "value")
+```
+
+Filter by dates of interest (ie experimental period)
+XXXXX
+
+Plot by tank over time 
+```{r}
+daily_tanks <- daily_long %>%
+  ggplot(aes(x=Date, y=value, colour=Tank))+
+  geom_point(size=2)+
+  xlab("Date")+
+  facet_grid(metric ~ ., scales = "free")+
+  theme_bw(); daily_tanks
+
+ggsave(filename="../output/environmental/tank_daily_measurements.png", plot=daily_tanks, dpi=300, width=6, height=8, units="in")
+```
+
+Plot by treatment summarizing tanks within each group over time 
+```{r}
+daily_treatment <- daily_long %>%
+  ggplot(aes(x=Date, y=value, colour=Treatment, group=interaction(Treatment, Date)))+
+  geom_point()+
+  #geom_boxplot()+
+  scale_colour_manual(values = c("Ambient" = "blue", "High" = "red")) +
+  xlab("Date")+
+  facet_grid(metric ~ ., scales = "free")+
+  theme_bw(); daily_treatment
+
+ggsave(filename="../output/environmental/treatment_daily_measurements.png", plot=daily_treatment, dpi=300, width=6, height=8, units="in")
+```
+
+Plot summary of treatments
+```{r}
+daily_treatment_summary <- daily_long %>%
+  ggplot(aes(x = Treatment, y = value, colour = Treatment)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(position = position_jitter(width = 0.15, height = 0), alpha = 0.6, size = 1.8) +
+  scale_colour_manual(values = c("Ambient" = "blue", "High" = "red")) +
+  ylab("Value") +
+  #ggtitle("A")+
+  ggh4x::facet_wrap2(~ metric, scales = "free_y", nrow = 2, axes = "margins") +  # <- x-axis only on outer/bottom
+  theme_classic() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.placement = "outside",
+    strip.background = element_blank()
+  ); daily_treatment_summary
+
+ggsave(filename="../output/environmental/summary_daily_measurements.png", plot=daily_treatment_summary, dpi=300, width=7, height=6, units="in")
+```
+
+Test for differences between tanks 
+```{r}
+# Temperature
+daily %>%
+  aov(Temperature_C~Tank, data=.)%>%
+  summary()
+
+# pH
+daily %>%
+  aov(pH_NBS~Tank, data=.)%>%
+  summary()
+
+# Salinity 
+daily %>%
+  aov(Salinity_psu~Tank, data=.)%>%
+  summary()
+
+# Light
+daily %>%
+  aov(Light_PAR~Tank, data=.)%>%
+  summary()
+```
+
+Test for differences between treatments
+```{r}
+# Temperature
+daily %>%
+  aov(Temperature_C~Treatment, data=.)%>%
+  summary()
+
+# pH
+daily %>%
+  aov(pH_NBS~Treatment, data=.)%>%
+  summary()
+
+# Salinity 
+daily %>%
+  aov(Salinity_psu~Treatment, data=.)%>%
+  summary()
+
+# Light
+daily %>%
+  aov(Light_PAR~Treatment, data=.)%>%
+  summary()
+```

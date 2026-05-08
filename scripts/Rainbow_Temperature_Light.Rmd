@@ -1,0 +1,215 @@
+---
+title: "Rainbow tank temperature and light"
+author: "Jill Ashey"
+date: "2026-05-08"
+output: html_document
+---
+
+This script plots temperature and light data collected from the rainbow tank monitoring system.
+
+```{r}
+library(tidyverse)
+library(readr)
+library(stringr)
+library(ggplot2)
+library(zoo) 
+```
+
+Read in metadata 
+```{r}
+tank_meta <- read.csv("../data/environmental/rainbow/Tank_metadata.csv")
+```
+
+## Temperature - rainbow tanks 
+
+Read in temperature data 
+```{r}
+# Set path and tank numbers 
+base_path <- "../data/environmental/rainbow/temperature/"
+file_numbers <- 7:12
+
+# Read and process files
+all_temp <- file_numbers %>%
+  map_df(function(num) {
+    file_name <- paste0(base_path, num, "-data-2026-05-07.csv")
+    temp_df <- read_csv(file_name)
+    rainbow_col <- names(temp_df)[2]
+    rainbow_num <- as.numeric(str_extract(rainbow_col, "\\d+"))
+    temp_df %>%
+      rename(DateTime = 1, temp_raw = 2) %>%
+      mutate(
+        Temperature_C = as.numeric(str_remove(temp_raw, " °C")),
+        Rainbow_Tank = rainbow_num
+      ) %>%
+      select(DateTime, Temperature_C, Rainbow_Tank)
+  })
+
+# Make sure Rainbow_Tank is numeric 
+tank_meta$Rainbow_Tank <- as.numeric(tank_meta$Rainbow_Tank)
+
+all_temp <- all_temp %>%
+  left_join(tank_meta, by = "Rainbow_Tank")
+```
+
+Filter by specific dates 
+XXX
+
+Plot by individual tank
+```{r}
+rainbow_tank_temp <- ggplot(all_temp, aes(x = DateTime, y = Temperature_C, color = Treatment_Tank)) +
+  geom_line(alpha = 1) +
+  labs(x = "Date and Time",
+       y = "Temperature (°C)",
+       color = "Tank ID") +
+  theme_classic(); rainbow_tank_temp
+
+ggsave(filename="../output/environmental/rainbow_tank_temperature.png", plot=rainbow_tank_temp, dpi=300, width=7, height=6, units="in")
+```
+
+Plot by treatment
+```{r}
+# Calculate mean + SE of treatment tanks 
+se <- function(x) sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
+
+temp_plot_summary <- all_temp %>%
+  group_by(DateTime, Treatment) %>%
+  summarise(
+    mean_temp = mean(Temperature_C, na.rm = TRUE),
+    se_temp = se(Temperature_C),
+    .groups = "drop"
+  ) %>%
+  group_by(Treatment) %>%
+  mutate(
+    temp_smooth = rollmean(mean_temp, k = 10, fill = NA)
+  )
+
+rainbow_trt_temp <- ggplot(temp_plot_summary, aes(x = DateTime, y = temp_smooth, color = Treatment, fill = Treatment)) +
+  geom_ribbon(aes(ymin = temp_smooth - se_temp, 
+                  ymax = temp_smooth + se_temp), 
+              alpha = 0.3, color = NA) + 
+  geom_line(size = 0.5) + # Thinner line
+  scale_color_manual(values = c("Ambient" = "blue", "High" = "red")) +
+  scale_fill_manual(values = c("Ambient" = "blue", "High" = "red")) +
+  labs(x = "Date and Time",
+       y = "Temperature (°C)",
+       color = "Treatment") +
+  theme_classic(); rainbow_trt_temp
+
+ggsave(filename="../output/environmental/rainbow_treatment_temperature.png", plot=rainbow_trt_temp, dpi=300, width=7, height=6, units="in")
+```
+
+## Light - rainbow tanks 
+
+Read in light data 
+```{r}
+# Set path and tank numbers 
+base_path <- "../data/environmental/rainbow/light/"
+file_numbers <- 7:12
+
+# Read and process files
+all_light <- file_numbers %>%
+  map_df(function(num) {
+    file_name <- paste0(base_path, num, "-data-2026-05-07.csv")
+    light_df <- read_csv(file_name)
+    controller_col <- names(light_df)[2]
+    controller_num <- as.numeric(str_extract(controller_col, "\\d+"))
+    light_df %>%
+      rename(DateTime = 1, light_raw = 2) %>%
+      mutate(
+        Light_PAR = as.numeric(str_remove(light_raw, " PAR")),
+        controller = controller_num
+      ) %>%
+      select(DateTime, Light_PAR, controller)
+  })
+
+# Make sure controller is numeric 
+tank_meta$controller <- as.numeric(tank_meta$controller)
+
+all_light <- all_light %>%
+  left_join(tank_meta, by = "controller")
+```
+
+Correct for immersion effect (see details on [Apogee site](https://www.apogeeinstruments.com/underwater-par-measurements/)).
+```{r}
+all_light <- all_light %>%
+  mutate(Light_PAR_corrected = Light_PAR * 1.25)
+```
+
+Filter by specific dates 
+XXX
+
+Plot by individual tank
+```{r}
+rainbow_tank_light <- ggplot(all_light, aes(x = DateTime, y = Light_PAR_corrected, color = Treatment_Tank)) +
+  geom_line(alpha = 1) +
+  labs(x = "Date and Time",
+       y = "Light (PAR)",
+       color = "Tank ID") +
+  theme_classic(); rainbow_tank_light
+
+ggsave(filename="../output/environmental/rainbow_tank_light.png", plot=rainbow_tank_light, dpi=300, width=7, height=6, units="in")
+```
+
+Plot by treatment
+```{r}
+# Calculate mean + SE of treatment tanks 
+se <- function(x) sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
+
+light_plot_summary <- all_light %>%
+  group_by(DateTime, Treatment) %>%
+  summarise(
+    mean_light = mean(Light_PAR_corrected, na.rm = TRUE),
+    se_light = se(Light_PAR_corrected),
+    .groups = "drop"
+  ) %>%
+  group_by(Treatment) %>%
+  mutate(
+    light_smooth = rollmean(mean_light, k = 10, fill = NA)
+  )
+
+rainbow_trt_light <- ggplot(light_plot_summary, aes(x = DateTime, y = light_smooth, color = Treatment, fill = Treatment)) +
+  geom_ribbon(aes(ymin = light_smooth - se_light, 
+                  ymax = light_smooth + se_light), 
+              alpha = 0.3, color = NA) + 
+  geom_line(size = 0.5) + # Thinner line
+  scale_color_manual(values = c("Ambient" = "blue", "High" = "red")) +
+  scale_fill_manual(values = c("Ambient" = "blue", "High" = "red")) +
+  labs(x = "Date and Time",
+       y = "Light (PAR)",
+       color = "Treatment") +
+  theme_classic(); rainbow_trt_light
+
+ggsave(filename="../output/environmental/rainbow_treatment_light.png", plot=rainbow_trt_light, dpi=300, width=7, height=6, units="in")
+```
+
+## Analysis 
+
+Test for differences between tanks 
+```{r}
+# Temperature
+all_temp %>%
+  aov(Temperature_C~Treatment_Tank, data=.)%>%
+  summary() #%>%
+  #TukeyHSD() %>%
+  #tidy()
+
+# Light
+all_light %>%
+  aov(Light_PAR_corrected~Treatment_Tank, data=.)%>%
+  summary() #%>%
+  #TukeyHSD() %>%
+  #tidy()
+```
+
+Test for differences between treatments  
+```{r}
+# Temperature
+all_temp %>%
+  aov(Temperature_C~Treatment, data=.)%>%
+  summary()
+
+# Light
+all_light %>%
+  aov(Light_PAR_corrected~Treatment, data=.)%>%
+  summary()
+```
