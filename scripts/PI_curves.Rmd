@@ -1,0 +1,13 @@
+---
+title: "PI curves"
+author: "Jill Ashey"
+date: "2026-05-08"
+output: html_document
+---
+
+This script analyzes PI curve data generated during the heat stress experiment. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+

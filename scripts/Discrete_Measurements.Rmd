@@ -97,9 +97,9 @@ daily %>%
   summary()
 
 # pH
-daily %>%
-  aov(pH_NBS~Tank, data=.)%>%
-  summary()
+#daily %>%
+#  aov(pH_NBS~Tank, data=.)%>%
+#  summary()
 
 # Salinity 
 daily %>%
@@ -120,9 +120,9 @@ daily %>%
   summary()
 
 # pH
-daily %>%
-  aov(pH_NBS~Treatment, data=.)%>%
-  summary()
+#daily %>%
+#  aov(pH_NBS~Treatment, data=.)%>%
+#  summary()
 
 # Salinity 
 daily %>%
