@@ -1,0 +1,66 @@
+---
+title: "Buoyant Weight"
+author: "Jill Ashey"
+date: "2026-05-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+Read in BW data 
+```{r}
+bw_data <- read.csv("../data/Physiology/buoyant_weight_experiment.csv", header = T)
+```
+
+```{r}
+# 1. Separate the Dry Plug weights to use as a reference
+plug_weights <- bw_data %>%
+  filter(Sample == "Dry plug") %>%
+  select(SampleID, PlugWeight = Weight_g)
+
+# 2. Filter for Coral measurements and join with plug weights
+corals <- bw_data %>%
+  filter(Sample == "Coral") %>%
+  filter(!grepl("pHi", SampleID)) %>% # remove pHi samples for now
+  left_join(plug_weights, by = "SampleID") %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))
+
+# 3. Define Constants
+rho_ske <- 2.93 # density of aragonite
+# Simple function for seawater density (kg/m3 converted to g/cm3) at 35ppt
+calc_rho_sw <- function(temp) {
+  (999.842594 + (6.793952e-2 * temp) - (9.095290e-3 * temp^2) + 
+   (1.001685e-4 * temp^3) - (1.120083e-6 * temp^4) + (6.536332e-9 * temp^5)) / 1000
+}
+
+# 4. Perform Calculations
+corals_calc <- corals %>%
+  mutate(
+    rho_sw = calc_rho_sw(Temperature_C),
+    # Net buoyant weight of the coral alone
+    net_buoy_g = Weight_g - PlugWeight,
+    # Convert to dry skeletal weight
+    dry_skeletal_weight = net_buoy_g / (1 - (rho_sw / rho_ske))
+  )
+
+# 5. Calculate change relative to the first day (5/6/26)
+growth_data <- corals_calc %>%
+  group_by(SampleID) %>%
+  arrange(Date) %>%
+  mutate(Weight_Change = dry_skeletal_weight - first(dry_skeletal_weight)) %>%
+  ungroup() %>%
+  # Extract Treatment from SampleID (A = Ambient, H = High)
+  mutate(Treatment = ifelse(grepl("-A", SampleID), "Ambient", "High"))
+
+ggplot(growth_data, aes(x = Date, y = dry_skeletal_weight, color = Treatment, group = SampleID)) +
+  geom_line(alpha = 0.5) + 
+  geom_point() +
+  labs(x = "Date",
+       y = "Calculated Dry Skeletal Weight (g)") +
+  theme_minimal()
+```
+

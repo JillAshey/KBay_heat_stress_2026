@@ -97,9 +97,9 @@ daily %>%
   summary()
 
 # pH
-#daily %>%
-#  aov(pH_NBS~Tank, data=.)%>%
-#  summary()
+daily %>%
+  aov(pH_NBS~Tank, data=.)%>%
+  summary()
 
 # Salinity 
 daily %>%
@@ -109,6 +109,11 @@ daily %>%
 # Light
 daily %>%
   aov(Light_PAR~Tank, data=.)%>%
+  summary()
+
+# Flow
+daily %>%
+  aov(Flow_mL_per_5s~Tank, data=.)%>%
   summary()
 ```
 
@@ -120,9 +125,9 @@ daily %>%
   summary()
 
 # pH
-#daily %>%
-#  aov(pH_NBS~Treatment, data=.)%>%
-#  summary()
+daily %>%
+  aov(pH_NBS~Treatment, data=.)%>%
+  summary()
 
 # Salinity 
 daily %>%
@@ -132,5 +137,10 @@ daily %>%
 # Light
 daily %>%
   aov(Light_PAR~Treatment, data=.)%>%
+  summary()
+
+# Flow
+daily %>%
+  aov(Flow_mL_per_5s~Treatment, data=.)%>%
   summary()
 ```
