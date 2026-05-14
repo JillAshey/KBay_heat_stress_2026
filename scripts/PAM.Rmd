@@ -1,0 +1,97 @@
+---
+title: "PAM"
+author: "Jill Ashey"
+date: "2026-05-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+Read in list of tiff files 
+```{r}
+tiff <- read.csv("../data/Physiology/PAM/tiff_file_list_20260511.csv", header = F)
+```
+
+Read in results 
+```{r}
+pam_res <- read.csv("../data/Physiology/PAM/Results.csv", header = T)
+pam_res <- pam_res[-1,]
+```
+
+```{r}
+# Map pam results to sample names 
+pam_mapped <- pam_res %>%
+  mutate(
+    Sample_Name = rep(tiff$V1, each = 6, length.out = n()),
+    # Create an index (1 to 6) for each row within the sample group
+    Layer_Index = rep(1:6, length.out = n())
+  )
+
+# Calculate Fv/Fm
+final_results <- pam_mapped %>%
+  # 1. Filter only the rows we need
+  filter(Layer_Index %in% c(1, 2)) %>%
+  dplyr::select(Sample_Name, Layer_Index, Mean) %>%
+  
+  # 2. Pivot (this creates the list-cols and the warning)
+  pivot_wider(names_from = Layer_Index, names_prefix = "Layer_", values_from = Mean) %>%
+  
+  # 3. FIX: Convert the lists back into normal numeric columns
+  unnest(cols = c(Layer_1, Layer_2)) %>%
+  
+  # 4. Filter out the specific file you don't want
+  filter(Sample_Name != "12_A3_pHi.tif") %>%
+  
+  # 5. Now the math will work perfectly!
+  mutate(
+    Fv_Fm = (Layer_2 - Layer_1) / Layer_2
+  )
+  
+
+# View results
+head(final_results)
+
+final_results$SampleID <- final_results$Sample_Name
+```
+
+Format sample names for easy join 
+```{r}
+final_results$SampleID <- gsub(".tif", "", final_results$SampleID)
+final_results$SampleID <- gsub("PHI", "pHi", final_results$SampleID)
+```
+
+Merge with sample info 
+```{r}
+meta <- read.csv("../data/sample_manifest.csv", header = T)
+meta$SampleID <- gsub("PC-", "", meta$SampleID)
+meta$SampleID <- gsub("MC-", "", meta$SampleID)
+
+final_results <- final_results %>%
+  left_join(meta, by = "SampleID") %>%
+  dplyr::select(SampleID, Fv_Fm, Species, Phenotype, Treatment)
+```
+
+Plot! 
+```{r}
+# Filter out rows where Species or Treatment might be NA to keep the plot clean
+plot_data <- final_results[!is.na(final_results$Species) & !is.na(final_results$Treatment), ]
+
+ggplot(plot_data, aes(y = Fv_Fm, color = Phenotype, x = NA)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(position = position_jitter(0.2), alpha = 0.6) +
+  # Use vars() to wrap by both Species and Treatment
+  facet_wrap(vars(Species, Treatment)) +
+  theme_minimal() +
+  labs(
+    title = "Photosynthetic Efficiency (Fv/Fm) by Species and Treatment",
+    x = "Timepoint",
+    y = expression(F[v]/F[m]),
+    color = "Phenotype"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
