@@ -9,58 +9,170 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
+library(seacarb)
 ```
 
 Read in BW data 
 ```{r}
-bw_data <- read.csv("../data/Physiology/buoyant_weight_experiment.csv", header = T)
+bw_data <- read.csv("../data/Physiology/buoyant_weight_experiment.csv", header = T) %>%
+  mutate(Weight_g = as.numeric(bw_data$Weight_g)) %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))
 ```
 
+Extract and calculate final plug weights 
 ```{r}
-# 1. Separate the Dry Plug weights to use as a reference
-plug_weights <- bw_data %>%
-  filter(Sample == "Dry plug") %>%
-  select(SampleID, PlugWeight = Weight_g)
+avg_plug_weight <- bw_data %>%
+  filter(Sample == "Final plug") %>%
+  summarise(mean_wt = mean(Weight_g, na.rm = TRUE)) %>%
+  pull(mean_wt)
 
-# 2. Filter for Coral measurements and join with plug weights
-corals <- bw_data %>%
-  filter(Sample == "Coral") %>%
-  filter(!grepl("pHi", SampleID)) %>% # remove pHi samples for now
-  left_join(plug_weights, by = "SampleID") %>%
-  mutate(Date = as.Date(Date, format = "%m/%d/%y"))
-
-# 3. Define Constants
-rho_ske <- 2.93 # density of aragonite
-# Simple function for seawater density (kg/m3 converted to g/cm3) at 35ppt
-calc_rho_sw <- function(temp) {
-  (999.842594 + (6.793952e-2 * temp) - (9.095290e-3 * temp^2) + 
-   (1.001685e-4 * temp^3) - (1.120083e-6 * temp^4) + (6.536332e-9 * temp^5)) / 1000
-}
-
-# 4. Perform Calculations
-corals_calc <- corals %>%
-  mutate(
-    rho_sw = calc_rho_sw(Temperature_C),
-    # Net buoyant weight of the coral alone
-    net_buoy_g = Weight_g - PlugWeight,
-    # Convert to dry skeletal weight
-    dry_skeletal_weight = net_buoy_g / (1 - (rho_sw / rho_ske))
-  )
-
-# 5. Calculate change relative to the first day (5/6/26)
-growth_data <- corals_calc %>%
+# Extract specific final plug weights
+final_plugs <- bw_data %>%
+  filter(Sample == "Final plug") %>%
   group_by(SampleID) %>%
-  arrange(Date) %>%
-  mutate(Weight_Change = dry_skeletal_weight - first(dry_skeletal_weight)) %>%
-  ungroup() %>%
-  # Extract Treatment from SampleID (A = Ambient, H = High)
-  mutate(Treatment = ifelse(grepl("-A", SampleID), "Ambient", "High"))
+  summarise(Plug_Weight = mean(Weight_g, na.rm = TRUE), .groups = "drop")
+```
 
-ggplot(growth_data, aes(x = Date, y = dry_skeletal_weight, color = Treatment, group = SampleID)) +
-  geom_line(alpha = 0.5) + 
-  geom_point() +
-  labs(x = "Date",
-       y = "Calculated Dry Skeletal Weight (g)") +
-  theme_minimal()
+Calculate all the things 
+```{r}
+coral_calculations <- bw_data %>%
+  # Keep only coral measurements taken from 5/10/26 onwards
+  filter(Sample == "Coral" & Date >= as.Date("2026-05-10")) %>%
+  
+  # Join plug weights and fill missing ones with the average
+  left_join(final_plugs, by = "SampleID") %>%
+  mutate(Plug_Weight = ifelse(is.na(Plug_Weight), avg_plug_weight, Plug_Weight)) %>%
+  
+  # Step 3: Net Buoyant Weight of the Coral
+  mutate(Buoyant_Weight_Coral = Weight_g - Plug_Weight) %>%
+  
+  # Step 4: Temperature-dependent seawater density (converting kg/m3 to g/cm3)
+  mutate(rho_sw = rho(S = 35, T = Temperature_C, P = 0) / 1000) %>%
+  
+  # Step 5: True Skeletal Mass (Jokiel Equation)
+  mutate(Skeletal_Mass_g = Buoyant_Weight_Coral / (1 - (rho_sw / 2.93)))
+```
+
+Compute percent growth 
+```{r}
+baselines <- coral_calculations %>%
+  filter(Date == as.Date("2026-05-10")) %>%
+  select(SampleID, Baseline_Mass = Skeletal_Mass_g)
+
+# Compute final percent changes
+final_coral_data <- coral_calculations %>%
+  left_join(baselines, by = "SampleID") %>%
+  # Exclude any corals that were not measured on the May 10th baseline start
+  filter(!is.na(Baseline_Mass)) %>% 
+  mutate(Percent_Growth = (Skeletal_Mass_g - Baseline_Mass) / Baseline_Mass * 100) %>%
+  select(Date, SampleID, Temperature_C, Weight_g, 
+         Buoyant_Weight_Coral, rho_sw, Skeletal_Mass_g, Percent_Growth)
+```
+
+Join w/ metadata
+```{r}
+# Read and clean metadata
+meta <- read.csv("../data/sample_manifest.csv", header = T)
+
+# Final Join
+final_coral_data_meta <- final_coral_data %>%
+  left_join(meta, by = "SampleID") %>%
+  na.omit()
+```
+
+Plot
+```{r}
+library(ggplot2)
+
+# Ensure Date is recognized as a Date object if it lost its class during merging
+final_coral_data_meta$Date <- as.Date(final_coral_data_meta$Date)
+
+ggplot(final_coral_data_meta, aes(x = Date, y = Skeletal_Mass_g, color = Phenotype, group = SampleID)) +
+  # Draw trajectories for individual coral fragments
+  geom_line(alpha = 0.5, size = 0.6) +
+  geom_point(alpha = 0.8, size = 1.8) +
+  
+  # Facet grid by Species (rows) and Treatment (columns)
+  facet_grid(Species ~ Treatment) +
+  
+  # Clean, publication-ready styling
+  theme_bw() + 
+  labs(
+    title = "Coral Skeletal Growth Over Time",
+    subtitle = "Percent growth relative to 2026-05-10 baseline",
+    x = "Sampling Date",
+    y = "Percent Skeletal Growth (%)",
+    color = "Phenotype"
+  ) +
+  
+  # Clean up X-axis date formatting
+  scale_x_date(date_labels = "%m/%d", date_breaks = "4 days") +
+  
+  # Custom aesthetics for a polished look
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, color = "gray30"),
+    strip.text = element_text(face = "italic", size = 11), # Italicizes species names beautifully
+    strip.background = element_rect(fill = "gray95"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+```
+
+Another plot style
+```{r}
+library(ggplot2)
+
+# Ensure Date is a factor or character to create discrete groupings on the X-axis like the example
+final_coral_data_meta_plot <- final_coral_data_meta %>%
+  mutate(Date_Label = format(Date, "%Y%m%d")) # Formats date exactly like '20260510'
+
+ggplot(final_coral_data_meta_plot, aes(x = Date_Label, y = Skeletal_Mass_g, fill = Phenotype)) +
+  # 1. Add the boxplots (outliers hidden because geom_jitter will display all points)
+  geom_boxplot(aes(color = Phenotype), alpha = 0.6, outlier.shape = NA, width = 0.6, size = 0.8) +
+  
+  # 2. Overlay jittered raw points matching the boxplot dodging
+  geom_jitter(aes(color = Phenotype), alpha = 0.5, size = 2,
+              position = position_jitterdodge(jitter.width = 0.15, dodge.width = 0.6)) +
+  
+  # 3. Match the exact 2x2 grid structure (Rows = Species, Columns = Treatment)
+  facet_grid(Species ~ Treatment) +
+  
+  # 4. Apply the custom color scheme (Pink/Teal) for both fill and outline
+  scale_fill_manual(values = c("Resistant" = "#4b294fff", "Susceptible" = "#f3a17dff")) +
+  scale_color_manual(values = c("Resistant" = "#4b294fff", "Susceptible" = "#f3a17dff")) +
+  
+  # 5. Matching the labels and classic gray panel borders
+  labs(
+    title = "Skeletal Growth by Species, Phenotype, Treatment, and Timepoint",
+    x = "Timepoint",
+    y = "Skeletal growth (BW)",
+    fill = "Phenotype"
+  ) +
+  
+  # 6. Styling aesthetics to match the clean background and bold text elements
+  theme_bw() +
+  theme(
+    plot.title = element_text(face = "plain", size = 16, margin = margin(b = 15)),
+    axis.title = element_text(size = 13),
+    axis.text = element_text(size = 11),
+    
+    # Stylizing the facet banners
+    strip.background = element_rect(fill = "#D3D3D3", color = "black", size = 0.8),
+    strip.text.x = element_text(face = "bold", size = 12),
+    strip.text.y = element_text(face = "bold.italic", size = 12), # Italics for species names
+    
+    # Legend placement at the bottom
+    legend.position = "bottom",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 11),
+    
+    # Grid adjustments
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, size = 0.8)
+  ) +
+  # Removes the duplicate color legend guide so only the fill legend shows
+  guides(color = "none")
 ```
 

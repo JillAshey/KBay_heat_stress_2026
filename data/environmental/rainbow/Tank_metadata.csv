@@ -5,3 +5,5 @@ A3,9,Ambient,Exposures,40
 A1,10,Ambient,Exposures,37
 H3,11,High,Exposures,32
 H2,12,High,Exposures,30
+Calc_C13_ambient,6,Ambient,Calcification/C13 assay,31
+Calc_C13_high,5,High,Calcification/C13 assay,36

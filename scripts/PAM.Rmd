@@ -11,87 +11,159 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-Read in list of tiff files 
+Function to process PAM data 
 ```{r}
-tiff <- read.csv("../data/Physiology/PAM/tiff_file_list_20260511.csv", header = F)
+process_pam_data <- function(date_string) {
+  # Construct file paths
+  tiff_path <- paste0("../data/Physiology/PAM/tif_file_list_", date_string, ".csv")
+  res_path <- paste0("../data/Physiology/PAM/Results_", date_string, ".csv")
+  
+  # Read files
+  tiff_df <- read.csv(tiff_path, header = FALSE)
+  res_df <- read.csv(res_path, header = TRUE)
+  
+  # ONLY remove the first row if the date is 20260503 OR 20260511
+if (date_string %in% c("20260503", "20260511", "20260514")) {
+    res_df <- res_df[-1, ]
+  }
+  
+  # Process and calculate Fv/Fm
+  processed <- res_df %>%
+    mutate(
+      Sample_Name = rep(tiff_df$V1, each = 6, length.out = n()),
+      Layer_Index = rep(1:6, length.out = n())
+    ) %>%
+    filter(Layer_Index %in% c(1, 2)) %>%
+    dplyr::select(Sample_Name, Layer_Index, Mean) %>%
+    pivot_wider(names_from = Layer_Index, names_prefix = "Layer_", values_from = Mean) %>%
+    unnest(cols = c(Layer_1, Layer_2)) %>%
+    filter(Sample_Name != "12_A3_pHi.tif") %>%
+    mutate(
+      Fv_Fm = (Layer_2 - Layer_1) / Layer_2,
+      Date = date_string, 
+      SampleID = gsub(".tif", "", Sample_Name),
+      SampleID = gsub("PHI", "pHi", SampleID)
+    )
+  
+  return(processed)
+}
 ```
 
-Read in results 
+Process and combine PAM data from multiple dates
 ```{r}
-pam_res <- read.csv("../data/Physiology/PAM/Results.csv", header = T)
-pam_res <- pam_res[-1,]
+# Process both dates and combine
+dates <- c("20260503", "20260511", "20260514")
+all_pam <- map_df(dates, process_pam_data)
 ```
 
+Average a and b side of initial corals 
 ```{r}
-# Map pam results to sample names 
-pam_mapped <- pam_res %>%
+all_pam <- all_pam %>%
   mutate(
-    Sample_Name = rep(tiff$V1, each = 6, length.out = n()),
-    # Create an index (1 to 6) for each row within the sample group
-    Layer_Index = rep(1:6, length.out = n())
-  )
-
-# Calculate Fv/Fm
-final_results <- pam_mapped %>%
-  # 1. Filter only the rows we need
-  filter(Layer_Index %in% c(1, 2)) %>%
-  dplyr::select(Sample_Name, Layer_Index, Mean) %>%
-  
-  # 2. Pivot (this creates the list-cols and the warning)
-  pivot_wider(names_from = Layer_Index, names_prefix = "Layer_", values_from = Mean) %>%
-  
-  # 3. FIX: Convert the lists back into normal numeric columns
-  unnest(cols = c(Layer_1, Layer_2)) %>%
-  
-  # 4. Filter out the specific file you don't want
-  filter(Sample_Name != "12_A3_pHi.tif") %>%
-  
-  # 5. Now the math will work perfectly!
+    # Get the base ID by removing the _a or _b suffix
+    Base_ID = gsub("_[ab]", "", SampleID)
+  ) %>%
+  group_by(Base_ID, Date) %>%
+  summarize(
+    Fv_Fm = mean(Fv_Fm, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
   mutate(
-    Fv_Fm = (Layer_2 - Layer_1) / Layer_2
+    # Only add _phys if the ID does NOT contain 'A' or 'H' (case-insensitive)
+    SampleID = if_else(
+      grepl("A|H", Base_ID, ignore.case = TRUE), 
+      Base_ID, 
+      paste0(Base_ID, "-phys")
+    )
   )
-  
-
-# View results
-head(final_results)
-
-final_results$SampleID <- final_results$Sample_Name
 ```
 
-Format sample names for easy join 
+Make minor edits to sample ID names for certain corals 
 ```{r}
-final_results$SampleID <- gsub(".tif", "", final_results$SampleID)
-final_results$SampleID <- gsub("PHI", "pHi", final_results$SampleID)
+all_pam_meta$SampleID <- gsub("_", "-", all_pam_meta$SampleID)
+
+cleaned_pam <- all_pam %>%
+  filter(!str_detect(SampleID, regex("plug|test|thisone", ignore_case = TRUE)))
 ```
 
-Merge with sample info 
+Join w/ metadata
 ```{r}
+# Read and clean metadata
 meta <- read.csv("../data/sample_manifest.csv", header = T)
 meta$SampleID <- gsub("PC-", "", meta$SampleID)
 meta$SampleID <- gsub("MC-", "", meta$SampleID)
 
-final_results <- final_results %>%
+# Final Join
+all_pam_meta <- cleaned_pam %>%
   left_join(meta, by = "SampleID") %>%
-  dplyr::select(SampleID, Fv_Fm, Species, Phenotype, Treatment)
+  dplyr::select(SampleID, Date, Fv_Fm, Species, Phenotype, Treatment) %>%
+  na.omit()
 ```
 
-Plot! 
 ```{r}
-# Filter out rows where Species or Treatment might be NA to keep the plot clean
-plot_data <- final_results[!is.na(final_results$Species) & !is.na(final_results$Treatment), ]
-
-ggplot(plot_data, aes(y = Fv_Fm, color = Phenotype, x = NA)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(position = position_jitter(0.2), alpha = 0.6) +
-  # Use vars() to wrap by both Species and Treatment
-  facet_wrap(vars(Species, Treatment)) +
-  theme_minimal() +
+ggplot(all_pam_meta, aes(x = Date, y = Fv_Fm, fill = Phenotype)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(0.8)) +
+  geom_point(aes(group = Treatment, color = Phenotype), position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8), 
+             size = 1.5, alpha = 0.6) +
+  facet_grid(Species ~ Treatment) + 
+  #scale_fill_manual(values = c("Ambient" = "#56B4E9", "High" = "#D55E00")) + # Custom color palette
+  theme_bw() +
   labs(
-    title = "Photosynthetic Efficiency (Fv/Fm) by Species and Treatment",
+    title = "PAM by Species, Phenotype, Treatment, and Timepoint",
     x = "Timepoint",
-    y = expression(F[v]/F[m]),
+    y = "PAM",
+    fill = "Phenotype"
+  ) +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    legend.position = "bottom"
+  )
+```
+
+Calculate mean, sem, and sd 
+```{r}
+summary <- all_pam_meta %>%
+  group_by(Date, Treatment, Phenotype, Species) %>%
+  summarise(
+    mean_pam = mean(Fv_Fm, na.rm = TRUE),
+    sd_pam = sd(Fv_Fm, na.rm = T),
+    se_pam = sd(Fv_Fm, na.rm = T) / sqrt(length(Fv_Fm)),
+    .groups = "drop") %>%
+  drop_na()
+```
+
+Plot
+```{r}
+ggplot(summary, aes(x = Date, y = mean_pam, color = Phenotype, group = Phenotype)) +
+  #geom_hline(yintercept = 0, linetype = "dashed", color = "grey", size = 1) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = mean_pam - se_pam, ymax = mean_pam + se_pam, color = Phenotype),
+                width = 0.3, linewidth = 0.8) +  # color matches points/lines
+  facet_wrap(~Species+Treatment, scales = "fixed") +
+  scale_color_manual(
+    values = c("Resistant" = "#4b294fff", "Susceptible" = "#f3a17dff")
+  ) +
+  theme_classic(base_size = 16) +  # bigger base size
+  labs(
+    x = "",
+    y = "Fv_Fm",
     color = "Phenotype"
   ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+theme(
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+    strip.background = element_rect(fill = "white", color = "black", linewidth = 1),
+    strip.text = element_text(face = "italic", size = 16),
+    #legend.position = c(0.85, 0.83),  # adjust x, y for placement
+    legend.position = "right",
+    legend.background = element_rect(fill = alpha("white", 0.7), color = NA),
+    legend.key = element_blank(),    
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 13),
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 13, color = "black"),
+    axis.text.y = element_text(size = 13, color = "black"),
+    axis.title.y = element_text(size = 16)
+  )
 ```
+
 

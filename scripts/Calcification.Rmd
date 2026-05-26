@@ -15,6 +15,12 @@ library(emmeans)
 library(lme4)
 library(lmerTest)
 library(lsmeans)
+library(car)
+```
+
+Run this before running any ANOVAs
+```{r}
+options(contrasts = c("contr.sum", "contr.poly"))
 ```
 
 Read in data 
@@ -36,7 +42,7 @@ calc <- calc %>%
 Calculate blanks 
 ```{r}
 blank_delta_ta <- calc %>%
-  filter(ColonyID == "blank" | Notes == "blank") %>%
+  filter(SampleID == "blank" | Notes == "blank") %>%
   group_by(Timepoint) %>%
   summarise(mean_blank_delta_ta = mean(Delta_TA_raw, na.rm = TRUE))# %>%
   #pull(mean_blank_delta_ta)
@@ -74,7 +80,7 @@ calc_meta <- calc %>%
 Calculate mean, sem, and sd 
 ```{r}
 calc_summary <- calc_meta %>%
-  group_by(Timepoint, Phenotype, Species) %>%
+  group_by(Timepoint, Phenotype, Species, Treatment) %>%
   summarise(
     mean_calc = mean(Net_Calcification_cm2, na.rm = TRUE),
     sd_calc = sd(Net_Calcification_cm2, na.rm = T),
@@ -91,7 +97,7 @@ ggplot(calc_summary, aes(x = Timepoint, y = mean_calc, color = Phenotype, group 
   geom_point(size = 3) +
   geom_errorbar(aes(ymin = mean_calc - se_calc, ymax = mean_calc + se_calc, color = Phenotype),
                 width = 0.3, linewidth = 0.8) +  # color matches points/lines
-  facet_wrap(~Species, scales = "fixed") +
+  facet_wrap(~Species+Treatment, scales = "fixed") +
   scale_color_manual(
     values = c("Resistant" = "#4b294fff", "Susceptible" = "#f3a17dff")
   ) +
@@ -117,4 +123,88 @@ theme(
   )
 ```
 
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# 1. Calculate means and standard errors
+summary_data <- calc_meta %>%
+  filter(!is.na(Species) & !is.na(Phenotype) & !is.na(Treatment)) %>%
+  group_by(Timepoint, Species, Phenotype, Treatment) %>%
+  summarise(
+    mean_calc = mean(Net_Calcification_cm2, na.rm = TRUE),
+    se_calc = sd(Net_Calcification_cm2, na.rm = TRUE) / sqrt(n()),
+    .groups = 'drop'
+  )
+
+# 2. Plot the trends
+ggplot(summary_data, aes(x = Timepoint, y = mean_calc, color = Treatment, group = Treatment)) +
+  geom_line(linewidth = 1, position = position_dodge(0.2)) +
+  geom_errorbar(aes(ymin = mean_calc - se_calc, ymax = mean_calc + se_calc), 
+                width = 0.1, position = position_dodge(0.2)) +
+  geom_point(size = 3, position = position_dodge(0.2)) +
+  facet_grid(Species ~ Phenotype) +
+  scale_color_manual(values = c("Ambient" = "#56B4E9", "High" = "#D55E00")) +
+  theme_bw() +
+  labs(
+    title = "Changes in Net Calcification Across Timepoints",
+    x = "Timepoint",
+    #y = expression(Mean~Net~Calcification \pm SE),
+    color = "Treatment"
+  ) +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    legend.position = "bottom"
+  )
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# 1. Clean the data (remove blanks/NAs in key columns)
+plot_data <- calc_meta %>%
+  filter(!is.na(Species) & !is.na(Phenotype) & !is.na(Treatment))
+
+# 2. Generate the plot
+ggplot(plot_data, aes(x = Timepoint, y = Net_Calcification_cm2, color = Phenotype)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7, position = position_dodge(0.8)) +
+  geom_point(aes(group = Treatment), position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8), size = 1.5, alpha = 0.6) +
+  facet_grid(Species ~ Treatment) + 
+  scale_color_manual(
+    values = c("Resistant" = "#4b294fff", "Susceptible" = "#f3a17dff")) +
+  #scale_fill_manual(values = c("Ambient" = "#56B4E9", "High" = "#D55E00")) + # Custom color palette
+  theme_bw() +
+  labs(
+    title = "Net Calcification by Species, Phenotype, Treatment, and Timepoint",
+    x = "Timepoint",
+    y = expression(Net~Calcification~(mg~cm^{-2}~hr^{-1})) # Formats units nicely
+  ) +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    legend.position = "bottom"
+  )
+```
+
+Stats! 
+```{r}
+stats_data <- calc_meta %>%
+  filter(!is.na(Species) & !is.na(Phenotype) & !is.na(Treatment)) %>%
+  mutate(
+    Timepoint = as.factor(Timepoint),
+    Phenotype = as.factor(Phenotype),
+    Treatment = as.factor(Treatment),
+    ColonyID  = as.factor(ColonyID) # Useful if tracking individuals
+  )
+
+## Pcomp 
+pc_data <- stats_data %>% filter(Species == "Porites compressa")
+pc_mixed_model <- lmer(Net_Calcification_cm2 ~ Treatment * Timepoint * Phenotype + (1|ColonyID), data = pc_data)
+anova(pc_mixed_model)
+
+## Mcap 
+mc_data<- stats_data %>% filter(Species == "Montipora capitata")
+mc_mixed_model <- lmer(Net_Calcification_cm2 ~ Treatment * Timepoint * Phenotype + (1|ColonyID), data = mc_data)
+anova(mc_mixed_model)
+```
 

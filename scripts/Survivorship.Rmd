@@ -1,0 +1,79 @@
+---
+title: "Survivorship"
+author: "Jill Ashey"
+date: "2026-05-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Read in survivorship data
+```{r}
+surv <- read.csv("../data/Physiology/survivorship_experiment.csv", header = T)
+```
+
+Read in sample metadata and join with surv df by sample ID
+```{r}
+meta <- read.csv("../data/sample_manifest.csv", header = T)
+
+surv_meta <- surv %>%
+  left_join(meta, by = "SampleID")
+```
+
+```{r}
+# Load required libraries
+library(tidyverse)
+library(survival)
+library(survminer)
+
+# 1. Clean up and calculate experimental days
+surv_cleaned <- surv_meta %>%
+  mutate(
+    # Convert text dates to actual Date objects
+    Date = as.Date(Date, format = "%m/%d/%y"),
+    
+    # Calculate Day of Experiment assuming 5/10/26 is Day 0
+    Start_Date = as.Date("2026-05-10"),
+    Days = as.numeric(Date - Start_Date),
+    
+    # Create a proper Event binary column (1 = Dead, 0 = Censored/Alive)
+    # Your Censored column is already 0 for alive. We make sure Dead = 1.
+    Event = ifelse(Status == "Dead", 1, 0)
+  )
+
+# 2. Filter out rows AFTER a coral was destructively sampled
+# If they were sampled (Censored = 1), they should not contribute data past that day.
+# (Note: Standard survival objects handle right-censoring automatically if formatted correctly)
+
+# Create the survival object: Surv(time, event)
+surv_object <- Surv(time = surv_cleaned$Days, event = surv_cleaned$Event)
+
+# Fit a curve comparing Treatment and Phenotype
+fit_treatment <- survfit(surv_object ~ Treatment, data = surv_cleaned)
+fit_phenotype <- survfit(surv_object ~ Phenotype, data = surv_cleaned)
+
+# Fit a curve looking at the interaction of both
+fit_both <- survfit(surv_object ~ Treatment + Phenotype, data = surv_cleaned)
+
+ggsurvplot(
+  fit_both,
+  data = surv_cleaned,
+  pval = TRUE,             # Adds p-value from a log-rank test
+  conf.int = TRUE,         # Adds confidence intervals
+  risk.table = TRUE,       # Adds a text table showing number of corals remaining at risk
+  #legend.labs = c("Amb:Res", "Amb:Sus", "High:Res", "High:Sus"), # Adjust order based on your levels
+  palette = "Dark2",       # Color palette
+  xlab = "Days of Experiment",
+  ylab = "Survival Probability",
+  title = "Coral Survival Curves"
+)
+
+# Cox model evaluating Treatment, Phenotype, and their interaction
+cox_model <- coxph(surv_object ~ Treatment * Phenotype * Date, data = surv_cleaned)
+
+# View the summary results (look for p-values and Exp(coef) which is the Hazard Ratio)
+summary(cox_model)
+```
+

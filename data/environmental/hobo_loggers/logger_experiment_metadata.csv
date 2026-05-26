@@ -1,0 +1,11 @@
+Logger_type,Serial_number,Tank,Treatment,Date_in,Date_out,Use,Notes
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),21458461,Outdoor,Ambient,5/2/26,5/12/26,Outdoor tank temperature,
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),21458461,Rainbow tank 6,Ambient,5/16/26,5/24/26,Calcification and C13 ambient runs,
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),21458458,A2,Ambient,5/2/26,5/24/26,Experimental tank temperature,Rainbow tank 7
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),21458456,H3,High,5/2/26,5/24/26,Experimental tank temperature,Rainbow tank 11
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),21257937,H1,High,5/2/26,5/24/26,Experimental tank temperature,Rainbow tank 8
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),21257936,Batcave,Both,5/2/26,5/22/26,PI/calcification temperature - seasonal samples,
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),21257935,A1,Ambient,5/2/26,5/24/26,Experimental tank temperature,Rainbow tank 10 
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),20473299,A3,Ambient,5/2/26,5/24/26,Experimental tank temperature,Rainbow tank 9
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),10751413,H2,High,5/2/26,5/24/26,Experimental tank temperature,Rainbow tank 12; temperatures were not logged with this logger for some reason
+HOBO Pendant Temperature/Light 64K Data Logger (UA-002-64),20947172,Rainbow tank 5,High,5/16/26,5/24/26,Calcification and C13 high runs,

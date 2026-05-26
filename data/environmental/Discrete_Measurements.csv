@@ -29,18 +29,12 @@ Date,Time,Tank,Treatment,Temperature_C,Salinity_psu,pH_NBS,Flow_mL_per_5s,Light_
 5/10/26,13:30,A1,Ambient,27.49,33,8.63,46,407,JA & MM,
 5/10/26,13:30,H3,High,30.92,33,8.53,45,388,JA & MM,
 5/10/26,13:30,H2,High,30.95,33,8.69,46,403,JA & MM,
-5/11/26,16:08,A2,Ambient,27.28,33,8.41,50,314,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks
-5/11/26,16:08,H1,High,31.7,33,8.76,16,319,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks
-5/11/26,16:08,A3,Ambient,27.22,34,8.4,60,306,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks
-5/11/26,16:08,A1,Ambient,27.27,33,8.44,60,327,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks
-5/11/26,16:08,H3,High,31.52,33,8.48,41,322,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks
-5/11/26,16:08,H2,High,31.53,33,8.59,38,312,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks
-5/11/26,16:08,A2,Ambient,NA,NA,NA,37,NA,JA & KB,Flow re-adjustde at 16:30 so all tanks were similar
-5/11/26,16:08,H1,High,NA,NA,NA,39,NA,JA & KB,Flow re-adjustde at 16:30 so all tanks were similar
-5/11/26,16:08,A3,Ambient,NA,NA,NA,39,NA,JA & KB,Flow re-adjustde at 16:30 so all tanks were similar
-5/11/26,16:08,A1,Ambient,NA,NA,NA,40,NA,JA & KB,Flow re-adjustde at 16:30 so all tanks were similar
-5/11/26,16:08,H3,High,NA,NA,NA,41,NA,JA & KB,Flow re-adjustde at 16:30 so all tanks were similar
-5/11/26,16:08,H2,High,NA,NA,NA,38,NA,JA & KB,Flow re-adjustde at 16:30 so all tanks were similar
+5/11/26,16:08,A2,Ambient,27.28,33,8.41,37,314,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks; Flow re-adjustde at 16:30 so all tanks were similar
+5/11/26,16:08,H1,High,31.7,33,8.76,39,319,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks; Flow re-adjustde at 16:30 so all tanks were similar
+5/11/26,16:08,A3,Ambient,27.22,34,8.4,39,306,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks; Flow re-adjustde at 16:30 so all tanks were similar
+5/11/26,16:08,A1,Ambient,27.27,33,8.44,40,327,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks; Flow re-adjustde at 16:30 so all tanks were similar
+5/11/26,16:08,H3,High,31.52,33,8.48,41,322,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks; Flow re-adjustde at 16:30 so all tanks were similar
+5/11/26,16:08,H2,High,31.53,33,8.59,38,312,JA & KB,Flow adjusted at 8-9am so ambient tanks were higher flow than high tanks; Flow re-adjustde at 16:30 so all tanks were similar
 5/12/26,15:12,A2,Ambient,26.85,34,8.54,41,421,KB & MM,
 5/12/26,15:12,H1,High,31.2,34,8.51,44,395,KB & MM,
 5/12/26,15:12,A3,Ambient,27.03,33,8.6,41,407,KB & MM,
@@ -59,3 +53,57 @@ Date,Time,Tank,Treatment,Temperature_C,Salinity_psu,pH_NBS,Flow_mL_per_5s,Light_
 5/14/26,11:51,A3,Ambient,26.33,33,8.35,30,376,JA & KB,
 5/14/26,11:51,H1,High,31.45,33,8.32,28,380,JA & KB,
 5/14/26,11:51,A2,Ambient,26.51,33,8.33,29,364,JA & KB,
+5/15/26,12:24,A2,Ambient,25.68,33,8.41,26,433,JA,
+5/15/26,12:24,H1,High,31.43,33,8.37,31,431,JA,
+5/15/26,12:24,A3,Ambient,26.62,33,8.44,31,438,JA,
+5/15/26,12:24,A1,Ambient,25.92,33,8.46,25,446,JA,
+5/15/26,12:24,H3,High,31.36,33,8.4,28,436,JA,
+5/15/26,12:24,H2,High,31.44,33,8.44,29,447,JA,
+5/16/26,14:53,A2,Ambient,25.96,33,8.47,58,439,JA & JR,
+5/16/26,14:53,H1,High,31.62,33,8.57,34,427,JA & JR,
+5/16/26,14:53,A3,Ambient,26.95,33,8.6,30,406,JA & JR,
+5/16/26,14:53,A1,Ambient,26.56,33,8.47,42,433,JA & JR,
+5/16/26,14:53,H3,High,31.44,33,8.61,28,400,JA & JR,
+5/16/26,14:53,H2,High,31.52,33,8.64,28,411,JA & JR,
+5/17/26,14:35,A2,Ambient,26.32,33,8.51,55,431,JA,
+5/17/26,14:35,H1,High,31.71,33,8.58,47,441,JA,
+5/17/26,14:35,A3,Ambient,26.76,33,8.57,32,429,JA,
+5/17/26,14:35,A1,Ambient,26.65,33,8.49,47,454,JA,
+5/17/26,14:35,H3,High,31.36,33,8.58,41,432,JA,
+5/17/26,14:35,H2,High,31.58,33,8.62,42,441,JA,
+5/18/26,15:03,A2,Ambient,26.5,33,8.53,40,400,JA,
+5/18/26,15:03,H1,High,31.68,33,8.55,50,385,JA,
+5/18/26,15:03,A3,Ambient,26.8,33,8.49,44,382,JA,
+5/18/26,15:03,A1,Ambient,26.78,33,8.5,40,419,JA,
+5/18/26,15:03,H3,High,31.54,33,8.54,38,371,JA,
+5/18/26,15:03,H2,High,31.56,33,8.58,40,397,JA,
+5/19/26,12:45,A2,Ambient,26.36,33,8.43,38,444,JA & MM,
+5/19/26,12:45,H1,High,31.37,33,8.43,34,451,JA & MM,
+5/19/26,12:45,A3,Ambient,26.86,33,8.4,36,470,JA & MM,
+5/19/26,12:45,A1,Ambient,26.59,34,8.39,44,482,JA & MM,
+5/19/26,12:45,H3,High,31.46,33,8.44,37,448,JA & MM,
+5/19/26,12:45,H2,High,31.54,33,8.46,35,464,JA & MM,
+5/20/26,15:00,A2,Ambient,26.87,33,8.53,32,432,JA & MM,
+5/20/26,15:00,H1,High,31.55,33,8.54,31,415,JA & MM,
+5/20/26,15:00,A3,Ambient,27.11,33,8.52,35,438,JA & MM,
+5/20/26,15:00,A1,Ambient,26.63,33,8.5,37,447,JA & MM,
+5/20/26,15:00,H3,High,31.38,33,8.57,35,420,JA & MM,
+5/20/26,15:00,H2,High,31.3,33,8.61,31,435,JA & MM,
+5/21/26,15:51,A2,Ambient,25.7,33,8.48,41,348,JR & MM,
+5/21/26,15:51,H1,High,31.61,33,8.5,42,350,JR & MM,
+5/21/26,15:51,A3,Ambient,26.9,34,8.5,39,357,JR & MM,
+5/21/26,15:51,A1,Ambient,26.48,33,8.46,45,360,JR & MM,
+5/21/26,15:51,H3,High,31.64,33,8.5,38,335,JR & MM,
+5/21/26,15:51,H2,High,31.42,33,8.56,32,354,JR & MM,
+5/22/26,16:47,A2,Ambient,25.54,33,8.45,42,234,JA,
+5/22/26,16:47,H1,High,30.84,33,8.38,41,192,JA,
+5/22/26,16:47,A3,Ambient,26.64,33,8.46,41,192,JA,
+5/22/26,16:47,A1,Ambient,26.09,33,8.41,47,201,JA,
+5/22/26,16:47,H3,High,31.58,33,8.51,40,186,JA,
+5/22/26,16:47,H2,High,31.35,34,8.51,47,202,JA,
+5/23/26,15:15,A2,Ambient,25.56,33,8.53,36,353,JA,
+5/23/26,15:15,H1,High,31.52,34,8.55,34,353,JA,
+5/23/26,15:15,A3,Ambient,26.24,33,8.53,39,356,JA,
+5/23/26,15:15,A1,Ambient,26.12,33,8.45,40,369,JA,
+5/23/26,15:15,H3,High,31.51,33,8.48,44,337,JA,
+5/23/26,15:15,H2,High,31.42,33,8.5,48,363,JA,
